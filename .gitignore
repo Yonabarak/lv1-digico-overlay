@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+
+# Build artifacts
+build/
+dist/
+*.exe
+
+# Runtime / logs
+*.log
+lv1_overlay.log
+overlay_run.log
+mutex_test.log
+overlay_bootstrap.log
+spill_capture*.log
+spill_layout_watch.log
+spill_link_watch.log
+spill_page_watch.log
+
+# User data (machine-specific)
+overlay_settings.json
+overlay_profiles.json
+preamp_saves/
+tab_snapshots/
+
+# Debug / probe scripts (dev only, not part of the app)
+_*.py
+debug_*.py
+watch_*.py
+inspect_*.py
+pixel_sample.py
+snap_before.json
+snap_after.json
+spill_capture_stdout.txt
+spill_capture_stderr.txt
+watch_save_out.txt
+lv1_string_scan.txt
+
+# Misc runtime text files
+overlay_err.txt
+overlay_start_err.txt
+crash_log.txt
+test_log.txt
+.cursor/
+
+# OS
+Thumbs.db
+.DS_Store
