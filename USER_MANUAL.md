@@ -49,17 +49,16 @@ Once aligned these settings will be saved with the program.
 
 Enter:
 
-**Console IP** The IP address of your DiGiCo console (Can be seen in the Digico External Control window at the bottom).
-**Console ports** Enter the Receive port from Digico in the Send port, and the Send port from the Digico in the Receive port.
-**Network Ports** Make sure the correct ethernet port is selected (The control port and not the SG port)
+ - **Console IP** The IP address of your DiGiCo console (Can be seen in the Digico External Control window at the bottom).
+ - **Console ports** Enter the Receive port from Digico in the Send port, and the Send port from the Digico in the Receive port.
+ - **Network Ports** Make sure the correct ethernet port is selected (The control port and not the SG port)
 
 Click **Connect**. The overlay cells will populate with live gain and phantom values from the console within a few seconds.
 
 Other options in the Settings menu:
 
-**Sync LV1 channel names to Digico** Will transfer the names of the LV1 channels to the corresponding Digico channels.
-**Load preamp values with session** Will load the saved value (If there are any) from the session to the Digico preamps. 
-If multiple LV1 channels route to the same DiGiCo preamp (double-patching), the lowest-indexed LV1 channel's name is used.
+ - **Sync LV1 channel names to Digico** Will transfer the names of the LV1 channels to the corresponding Digico channels.
+ - **Load preamp values with session** Will load the saved value (If there are any) from the session to the Digico preamps. If multiple LV1 channels route to the same DiGiCo preamp (double-patching), the lowest-indexed LV1 channel's name is used.
 
 ---
 
