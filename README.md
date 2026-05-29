@@ -1,123 +1,143 @@
-# DiGiCo Aux Send Control
+# DiGiCo Preamp Overlay for Waves eMotion LV1
 
-A PC program to control auxiliary sends on DiGiCo consoles using the OSC (Open Sound Control) protocol.
+A transparent Windows overlay that sits on top of Waves eMotion LV1 and gives you real-time gain and phantom power control for every DiGiCo preamp — without leaving the LV1 window.
 
-## Features
+---
 
-- **Individual Control**: Precise control of individual channel-to-aux send levels
-- **Matrix View**: Visual matrix interface for controlling multiple channels and aux sends simultaneously
-- **OSC Monitor**: Real-time monitoring of OSC messages being sent to the console
-- **Flexible Configuration**: Adjustable number of channels and aux sends
-- **Fine Control**: Precise level adjustments with fine-tuning buttons
+## What it does
+
+- Displays a floating, click-through overlay on top of LV1 showing gain (dB) and 48V phantom for each input channel
+- Follows LV1's current page, layer, and spill mode automatically
+- Sends OSC commands directly to the DiGiCo console when you adjust a cell
+- Reads back the console's actual values on connect and after reconnects
+- Saves and restores preamp state per session — tied to LV1's native save workflow
+
+---
 
 ## Requirements
 
-- Python 3.7 or higher
-- DiGiCo console with OSC remote control enabled
-- Network connection to the console
+| Requirement | Version |
+|---|---|
+| Windows | 10 / 11 (64-bit) |
+| Python | 3.11+ |
+| PyQt6 | ≥ 6.6 |
+| python-osc | ≥ 1.8 |
+| psutil | ≥ 5.9 |
+| Waves eMotion LV1 | Running on the same machine |
+| DiGiCo console | Any model with OSC enabled on port 8000/8001 |
 
-## Installation
+Install dependencies:
 
-1. Install Python dependencies:
-```bash
+```
 pip install -r requirements.txt
 ```
 
-## Configuration
+---
 
-### Console Setup
+## Quick start
 
-1. On your DiGiCo console:
-   - Navigate to Setup → External Control
-   - Enable OSC remote control
-   - Note the console's IP address and OSC port (default is usually 10024)
-   - Configure the OSC address patterns if using custom mappings
+1. Open Waves eMotion LV1 with a session loaded
+2. Run:
+   ```
+   pythonw lv1_overlay.py
+   ```
+3. Click the **gear icon** in the overlay to open Settings
+4. Enter the DiGiCo console IP and click **Connect**
 
-### Program Setup
+The overlay will appear transparently over LV1 and populate with live preamp values.
 
-1. Launch the program:
-```bash
-python digico_aux_control.py
+---
+
+## Architecture
+
+```
+lv1_overlay.py          Main application — PyQt6 overlay window
+lv1_session.py          LV1 database parser (CurrentLV1.dat / .emo SQLite files)
+digico_multichannel.py  OSC engine + DiGiCo channel state store
 ```
 
-2. Configure connection:
-   - Enter the console's IP address
-   - Enter the OSC port (default: 10024)
-   - Set the number of channels and aux sends you want to control
-   - Click "Connect"
+### Threading model
 
-## Usage
+| Thread | Purpose |
+|---|---|
+| Qt main thread | UI, all state mutations, QTimer callbacks |
+| `OscThread` (QThread) | OSC send/receive loop (python-osc) |
+| `HeartbeatThread` (QThread) | 30-second re-poll of all DiGiCo channels |
 
-### Individual Control Tab
+Cross-thread communication uses `OscBridge` (QObject with signals), all connected with `Qt.ConnectionType.QueuedConnection`.
 
-- Select a channel and aux send number
-- Use the slider to adjust the level (-60 dB to +10 dB)
-- Use fine-tuning buttons for precise adjustments
-- Click "Mute" to mute/unmute the aux send
-- Click "Reset" to return level to 0 dB
+### LV1 session tracking
 
-### Matrix View Tab
+The overlay reads `CurrentLV1.dat` (LV1's live SQLite autosave) every 25 ms to track:
+- Current page / layer (`surface_property_int` prop 14)
+- Custom vs Factory mode
+- Spill mode and active link group
+- Channel routing (`ovv_layer_track` + `routes` tables)
 
-- View and control multiple channels and aux sends in a grid
-- Adjust levels using vertical sliders
-- Use "Clear All" to set all aux sends to -∞
-- Refresh the matrix view if you change channel/aux counts
+### Preamp save / load
 
-### OSC Monitor Tab
+Two-tier save system per session name:
 
-- Monitor all OSC messages being sent to the console
-- Enable/disable monitoring as needed
-- Clear the monitor log when needed
+| File | When written |
+|---|---|
+| `preamp_saves/<session>.json` | When user saves in LV1 (`.emo` file change detected, 3-second deferred write, 30-second post-fire cooldown to deduplicate LV1's multi-event save sequence) |
+| `preamp_saves/<session>.autosave.json` | Every time a gain/phantom value changes (1-second debounce) and on session switch / app close |
 
-## OSC Address Patterns
+On load, the system auto-detects whether LV1 opened from its last explicit save (state b) or its last working state (state c) by comparing the `.emo` file mtime against the mtime recorded in the autosave.
 
-The program uses standard DiGiCo OSC address patterns:
-- Level: `/ch/{channel}/mix/{aux}/level`
-- On/Off: `/ch/{channel}/mix/{aux}/on`
+### Overlay visibility rules
 
-**Note**: DiGiCo consoles allow custom OSC address mapping. If your console uses different address patterns, you may need to modify the `aux_level_pattern` and `aux_on_pattern` variables in the code.
+The overlay shows on **Input** layers only (`surface_property_int` section=0 or section_page=1). It hides automatically on Mix, Group, Aux, FX, and Matrix layers.
 
-## Troubleshooting
+In **Spill** mode the overlay shows only the channels belonging to the active link group.
 
-### Connection Issues
+---
 
-- Verify the console's IP address and port are correct
-- Ensure the PC and console are on the same network
-- Check that OSC remote control is enabled on the console
-- Verify firewall settings allow UDP traffic on the specified port
+## Settings reference
 
-### No Response from Console
+| Setting | Default | Description |
+|---|---|---|
+| Console IP | `0.0.0.0` | DiGiCo console IP address |
+| Console port | 8000 | OSC receive port on the console |
+| Listen port | 8001 | UDP port the overlay listens on |
+| Bind IP | auto | Local NIC to bind the OSC socket |
+| Channels | 96 | Number of input channels to control |
+| Gain range | −8 … +60 dB | Display range (auto-expands to match console) |
+| Sync names | on | Push LV1 channel names to DiGiCo via OSC |
+| Load preamp with session | on | Restore saved preamp state on session switch |
 
-- Check the OSC Monitor tab to see if messages are being sent
-- Verify the OSC address patterns match your console's configuration
-- Consult your DiGiCo console manual for the correct OSC command format
-- Some consoles may require authentication or specific message formats
+---
 
-### Level Values
+## Versioning
 
-DiGiCo consoles may use different value ranges for levels:
-- Some use linear values (0.0 to 1.0)
-- Some use dB values directly
-- Some use normalized values
+Format: `MAJOR.MINOR.PATCH`
 
-You may need to adjust the level conversion in the `on_level_change()` method based on your console's requirements.
+- **MAJOR** — breaking architectural changes
+- **MINOR** — significant new features
+- **PATCH** — bug fixes and small improvements
 
-## Customization
+Current version: **0.1.1**
 
-To customize OSC address patterns, edit these variables in `digico_aux_control.py`:
+---
 
-```python
-self.aux_level_pattern = "/ch/{channel}/mix/{aux}/level"
-self.aux_on_pattern = "/ch/{channel}/mix/{aux}/on"
+## Building a standalone executable
+
+```powershell
+.\build.ps1
 ```
 
-Replace with your console's specific address format.
+Produces `dist\LV1-DiGiCo-Overlay.exe` via PyInstaller.
+
+---
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl+Q` | Emergency exit (works even without overlay focus) |
+
+---
 
 ## License
 
-This program is provided as-is for controlling DiGiCo consoles via OSC.
-
-## Support
-
-For DiGiCo-specific OSC documentation, refer to your console's user manual or contact DiGiCo support.
-
+MIT
